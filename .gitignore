@@ -1,0 +1,16 @@
+.env
+.venv/
+venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+node_modules/
+dist/
+.DS_Store
+.pytest_cache/
+
+# Generated exports and local database artifacts — never commit real response data
+*.xlsx
+*.xls
+*.sqlite3
+*.db
