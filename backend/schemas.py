@@ -28,6 +28,9 @@ class EventRequest(BaseModel):
 
 class SurveySubmission(BaseModel):
     session_id: str = Field(min_length=1, max_length=36)
+    participant_name: str = Field(min_length=1, max_length=200)
+    major_program: str = Field(min_length=1, max_length=200)
+    college_school: str = Field(min_length=1, max_length=200)
     usc_affiliation: str
     fitness_frequency: str
     fitness_interests: list[str] = Field(min_length=1)

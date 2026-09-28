@@ -10,6 +10,9 @@ const API_BASE = (import.meta.env.DEV
 
 const sections = [
   { title: 'About you', intro: 'A little context before you explore the concept.', questions: [
+    question('participant_name', 'Full Name', 'text', [], { personal: true, placeholder: 'Enter your full name' }),
+    question('major_program', 'Major / Program', 'text', [], { personal: true, placeholder: 'e.g., Computer Science' }),
+    question('college_school', 'College / School', 'text', [], { personal: true, placeholder: 'e.g., USC Viterbi School of Engineering' }),
     question('usc_affiliation', 'Are you currently affiliated with USC?', 'radio', ['Yes, undergraduate student', 'Yes, graduate student', 'Yes, other USC affiliation', 'No']),
     question('fitness_frequency', 'How frequently do you currently participate in fitness or physical activities?', 'radio', ['Five or more times per week', 'Three to four times per week', 'One to two times per week', 'Less than once per week', 'I do not currently participate']),
     question('fitness_interests', 'Which fitness activities are you currently interested in?', 'checkbox', ['Gym/strength training', 'Running or jogging', 'Walking', 'Group fitness classes', 'Yoga or Pilates', 'Recreational sports', 'Cycling', 'Swimming', 'Dance', 'Other', 'I am not currently interested in a fitness activity'], { hint: 'Select all that apply.', other: 'fitness_interests_other' }),
@@ -38,8 +41,16 @@ const sections = [
 ];
 
 function question(id, title, type, options, extra = {}) {
-  return { id, title, type, options, required: extra.required !== false, hint: extra.hint, other: extra.other, condition: extra.condition };
+  return { id, title, type, options, required: extra.required !== false, hint: extra.hint, other: extra.other, condition: extra.condition, personal: extra.personal, placeholder: extra.placeholder };
 }
+
+// Number only the research questions (Q1-Q17); participant-info fields stay unnumbered.
+let questionNumber = 0;
+sections.forEach((section) => {
+  (section.questions || []).forEach((item) => {
+    if (!item.personal) item.number = ++questionNumber;
+  });
+});
 
 const initialState = () => ({ step: 0, sessionId: null, startedAt: null, openedAt: null, returnedAt: null, answers: {} });
 let state = loadState();
@@ -145,6 +156,8 @@ function renderQuestion(item) {
     control = `<textarea id="field-${item.id}" name="${item.id}" rows="4" placeholder="Your response (optional)">${esc(value || '')}</textarea>`;
   } else if (item.type === 'email') {
     control = `<input id="field-${item.id}" name="${item.id}" type="email" autocomplete="email" value="${esc(value || '')}" placeholder="name@example.com"><p class="privacy-note">Your email will only be used for this class project's potential follow-up testing and will not be publicly displayed.</p>`;
+  } else if (item.type === 'text') {
+    control = `<input id="field-${item.id}" name="${item.id}" type="text" value="${esc(value || '')}" placeholder="${esc(item.placeholder || '')}">`;
   } else {
     control = `<div class="options-grid ${item.options.length > 7 ? 'options-compact' : ''}" role="${item.type === 'radio' ? 'radiogroup' : 'group'}" aria-label="${esc(item.title)}">${item.options.map((option) => `
       <label class="option-card ${values.includes(option) ? 'selected' : ''}">
@@ -155,20 +168,30 @@ function renderQuestion(item) {
   const other = item.other ? `<div class="other-field" ${values.includes('Other') ? '' : 'hidden'}><label for="field-${item.other}">Tell us a little more <span>(optional)</span></label><input id="field-${item.other}" name="${item.other}" type="text" maxlength="1000" value="${esc(state.answers[item.other] || '')}" placeholder="Add a short note"></div>` : '';
   const showEmail = ['Yes, I would like to participate', 'Maybe — send me more information'].includes(state.answers[item.condition]);
   const visibility = item.condition && !showEmail ? 'hidden' : '';
+  const numberPrefix = item.number ? `${item.number}. ` : '';
   return `<fieldset class="question ${item.type === 'email' ? 'email-question' : ''}" data-question="${item.id}" data-type="${item.type}" data-required="${item.required}" ${visibility}>
-    <legend>${esc(item.title)} ${required}</legend>${description}${control}${other}<p class="field-error" id="error-${item.id}" role="alert" hidden></p>
+    <legend>${numberPrefix}${esc(item.title)} ${required}</legend>${description}${control}${other}<p class="field-error" id="error-${item.id}" role="alert" hidden></p>
   </fieldset>`;
 }
 
 function renderPrototype() {
+  if (state.openedAt) {
+    return `<div class="prototype-card">
+      <div class="prototype-symbol" aria-hidden="true">✦</div>
+      <h2>Welcome back</h2>
+      <p>When you’ve finished exploring SCFit, continue below.</p>
+      <a class="button button-quiet explore-button" id="prototype-link" href="${PROTOTYPE_URL}" target="_blank" rel="noopener noreferrer">Reopen SCFit Prototype <span>↗</span></a>
+      <div class="prototype-status ${state.returnedAt ? 'status-done' : ''}" id="prototype-status" aria-live="polite">${state.returnedAt ? 'Thanks for exploring. You’re ready to continue.' : 'Prototype opened. Return here when you’re ready.'}</div>
+    </div>`;
+  }
   return `<div class="prototype-card">
     <div class="prototype-symbol" aria-hidden="true">✦</div>
     <h2>Explore the SCFit Prototype</h2>
     <p>Please open the SCFit prototype below. Explore the available fitness locations, student profiles, and group activities as if you were deciding whether to use the platform.</p>
     <p>The prototype contains example profiles and activities and does not provide functional messaging or automatic matching.</p>
     <p>After exploring the prototype, return to this tab and continue the concept test.</p>
-    <a class="button button-primary explore-button" id="prototype-link" href="${PROTOTYPE_URL}" target="_blank" rel="noopener noreferrer">${state.openedAt ? 'Prototype opened' : 'Explore SCFit Prototype'} <span>↗</span></a>
-    <div class="prototype-status ${state.openedAt && state.returnedAt ? 'status-done' : ''}" id="prototype-status" aria-live="polite">${state.openedAt && state.returnedAt ? 'Thanks for exploring. You’re ready to continue.' : state.openedAt ? 'Prototype opened. Return here when you’re ready.' : 'Open the prototype to continue.'}</div>
+    <a class="button button-primary explore-button" id="prototype-link" href="${PROTOTYPE_URL}" target="_blank" rel="noopener noreferrer">Explore SCFit Prototype <span>↗</span></a>
+    <div class="prototype-status" id="prototype-status" aria-live="polite">Open the prototype to continue.</div>
   </div>`;
 }
 

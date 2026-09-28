@@ -193,9 +193,11 @@ def export_responses(db: Session = Depends(get_db)):
     sheet = workbook.active
     sheet.title = "Responses"
     fields = [
-        ("Session ID", "session_id"), ("Started At", "created_at"), ("Submitted At", "submitted_at"),
+        ("Session ID", "session_id"), ("Participant Name", "participant_name"),
+        ("Major / Program", "major_program"), ("College / School", "college_school"),
+        ("USC Affiliation", "usc_affiliation"), ("Started At", "created_at"), ("Submitted At", "submitted_at"),
         ("Prototype Opened At", "prototype_opened_at"), ("Prototype Returned At", "prototype_returned_at"),
-        ("Completion Time (seconds)", "completion_time_seconds"), ("USC Affiliation", "usc_affiliation"),
+        ("Completion Time (seconds)", "completion_time_seconds"),
         ("Fitness Frequency", "fitness_frequency"), ("Fitness Interests", "fitness_interests"),
         ("Fitness Interests - Other", "fitness_interests_other"), ("Opportunity Difficulty", "opportunity_difficulty"),
         ("Partner Difficulty", "partner_difficulty"), ("Participation Barriers", "participation_barriers"),
