@@ -14,3 +14,7 @@ dist/
 *.xls
 *.sqlite3
 *.db
+
+# Neon local project context and local environment
+.neon
+.env.local
