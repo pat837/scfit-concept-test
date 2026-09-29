@@ -1,7 +1,7 @@
 import './style.css';
 
 const PROTOTYPE_URL = 'https://scfit-fitness.netlify.app/';
-const STORAGE_KEY = 'scfit-concept-test-v1';
+const STORAGE_KEY = 'scfit-concept-test-v2';
 // Strip a trailing slash so `${API_BASE}${path}` never produces a double slash.
 const API_BASE = (import.meta.env.DEV
   ? (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000')
@@ -9,42 +9,30 @@ const API_BASE = (import.meta.env.DEV
 ).replace(/\/+$/, '');
 
 const sections = [
-  { title: 'About you', intro: 'A little context before you explore the concept.', questions: [
+  { title: 'About You', intro: 'A little context before you explore the concept.', questions: [
     question('participant_name', 'Full Name', 'text', [], { personal: true, placeholder: 'Enter your full name' }),
     question('major_program', 'Major / Program', 'text', [], { personal: true, placeholder: 'e.g., Computer Science' }),
     question('college_school', 'College / School', 'text', [], { personal: true, placeholder: 'e.g., USC Viterbi School of Engineering' }),
+    question('initial_product_testing_interest', 'Would you be interested in testing an early version of SCFit?', 'radio', ['Yes, I’d be interested', 'Maybe', 'Not right now']),
     question('usc_affiliation', 'Are you currently affiliated with USC?', 'radio', ['Yes, undergraduate student', 'Yes, graduate student', 'Yes, other USC affiliation', 'No']),
-    question('fitness_frequency', 'How frequently do you currently participate in fitness or physical activities?', 'radio', ['Five or more times per week', 'Three to four times per week', 'One to two times per week', 'Less than once per week', 'I do not currently participate']),
-    question('fitness_interests', 'Which fitness activities are you currently interested in?', 'checkbox', ['Gym/strength training', 'Running or jogging', 'Walking', 'Group fitness classes', 'Yoga or Pilates', 'Recreational sports', 'Cycling', 'Swimming', 'Dance', 'Other', 'I am not currently interested in a fitness activity'], { hint: 'Select all that apply.', other: 'fitness_interests_other' }),
+    question('fitness_interests', 'Which fitness activities are you most interested in?', 'checkbox', ['Gym/strength training', 'Running or jogging', 'Walking', 'Group fitness classes', 'Yoga or Pilates', 'Recreational sports', 'Cycling', 'Swimming', 'Dance', 'Other'], { hint: 'Select up to 3.', other: 'fitness_interests_other', maxSelections: 3 }),
+    question('participation_barriers', 'What is the biggest challenge you currently face with fitness?', 'checkbox', ['I do not know what fitness opportunities are available', 'Fitness information is spread across different places', 'I do not have someone to participate with', 'I feel uncomfortable joining alone', 'Available activities do not fit my schedule', 'Locations are inconvenient', 'Cost', 'Lack of motivation', 'I prefer exercising alone', 'Nothing currently prevents me', 'Other'], { hint: 'Select up to 2.', other: 'participation_barriers_other', maxSelections: 2 }),
   ] },
-  { title: 'Your current experience', intro: 'Think about how you find and take part in fitness today.', questions: [
-    question('opportunity_difficulty', 'How easy or difficult is it for you to find fitness opportunities that fit your interests, schedule, and location?', 'radio', ['Very difficult', 'Difficult', 'Neither easy nor difficult', 'Easy', 'Very easy']),
-    question('partner_difficulty', 'How easy or difficult is it for you to find other USC students to participate in fitness activities with?', 'radio', ['Very difficult', 'Difficult', 'Neither easy nor difficult', 'Easy', 'Very easy', 'I prefer exercising alone']),
-    question('participation_barriers', 'What currently prevents you from participating in fitness activities as much as you would like?', 'checkbox', ['I do not know what fitness opportunities are available', 'Fitness information is spread across different places', 'I do not have someone to participate with', 'I feel uncomfortable joining alone', 'Available activities do not fit my schedule', 'Locations are inconvenient', 'Cost', 'Lack of motivation', 'I prefer exercising alone', 'Nothing currently prevents me', 'Other'], { other: 'participation_barriers_other' }),
-    question('discovery_methods', 'How do you currently find fitness activities or people to participate with?', 'checkbox', ['Friends or classmates', 'USC websites', 'USC student organizations', 'Instagram or other social media', 'Group chats', 'Fitness applications', 'Posters or campus events', 'Online search', 'I do not currently search for these opportunities', 'Other'], { other: 'discovery_methods_other' }),
-  ] },
-  { title: 'Explore SCFit', intro: 'Take a quick look at the prototype before sharing your reaction.', prototype: true },
-  { title: 'Your reaction', intro: 'Answer based on what you saw in the SCFit prototype.', questions: [
-    question('prototype_sections_explored', 'Which parts of the SCFit prototype did you explore?', 'checkbox', ['Fitness locations/opportunities', 'Student fitness profiles', 'Run clubs or group activities', 'Individual student profile', 'Individual activity details', 'I did not explore the prototype']),
-    question('most_valuable_feature', 'Which feature would be most valuable to you?', 'radio', ['Discovering gyms and workout locations', 'Discovering fitness events and activities', 'Browsing students with similar fitness interests', 'Connecting with another student to work out', 'Finding run clubs or group activities', 'None of these']),
-    question('likely_action', 'Based on what you saw, which action would you be most likely to take?', 'radio', ['Explore a fitness location', 'View another student’s profile', 'Reach out to another student', 'Join a run club', 'Join a group fitness activity', 'I would browse but probably not take an action', 'I would not use the platform']),
-    question('community_value', 'How valuable would it be to browse other USC students based on shared fitness interests?', 'radio', ['Not at all valuable', 'Slightly valuable', 'Moderately valuable', 'Very valuable', 'Extremely valuable']),
-    question('next_month_likelihood', 'If SCFit were available today, how likely would you be to use it during the next month?', 'radio', ['Very unlikely', 'Unlikely', 'Unsure', 'Likely', 'Very likely']),
-    question('adoption_barriers', 'What, if anything, would prevent you from using SCFit?', 'checkbox', ['Privacy or safety concerns', 'I would not feel comfortable contacting students I do not know', 'I prefer finding activities through existing USC resources', 'I prefer exercising alone', 'I would be concerned about inactive or inaccurate profiles', 'I would need more information before using it', 'The platform does not offer the activities I want', 'Nothing would prevent me', 'Other'], { other: 'adoption_barriers_other' }),
-    question('overall_reaction', 'What is your overall reaction to the SCFit concept?', 'textarea', [], { required: false, hint: 'Please share what you found useful, confusing, unnecessary, or missing.' }),
-  ] },
-  { title: 'Future pilot', intro: 'One last question about what you would want to try.', questions: [
-    question('future_test_interest', 'Would you like to be invited to test a future version of SCFit?', 'radio', ['Yes, I would like to participate', 'Maybe — send me more information', 'No']),
-    question('email', 'If you selected “Yes” or “Maybe,” you may provide your email address below.', 'email', [], { required: false, condition: 'future_test_interest' }),
-    question('preferred_future_experience', 'Which SCFit experience would you most want to test?', 'radio', ['Finding a workout partner', 'Joining a run club', 'Joining a group workout', 'Discovering fitness locations', 'Discovering fitness activities and events', 'Other'], { other: 'preferred_future_experience_other' }),
+  { title: 'Explore SCFit', intro: 'Explore fitness locations, student profiles, and group activities.', prototype: true },
+  { title: 'Prototype Feedback', intro: 'Share your first reaction after exploring SCFit.', questions: [
+    question('most_valuable_feature', 'Which SCFit feature stood out to you the most?', 'radio', ['Discovering gyms and workout locations', 'Discovering fitness events and activities', 'Browsing students with similar fitness interests', 'Connecting with another student to work out', 'Finding run clubs or group activities', 'None of these']),
+    question('likely_action', 'If you opened SCFit today, what would you most likely do first?', 'radio', ['Explore a fitness location', 'View another student’s profile', 'Reach out to another student', 'Join a run club', 'Join a group fitness activity', 'I would browse but probably not take an action', 'I would not use the platform']),
+    question('adoption_barriers', 'What could make you hesitate to use SCFit?', 'checkbox', ['Privacy or safety concerns', 'I would not feel comfortable contacting students I do not know', 'I prefer finding activities through existing USC resources', 'I prefer exercising alone', 'I would be concerned about inactive or inaccurate profiles', 'I would need more information before using it', 'The platform does not offer the activities I want', 'Nothing would prevent me', 'Other'], { other: 'adoption_barriers_other' }),
+    question('next_month_likelihood', 'How likely would you be to use SCFit in the next month?', 'radio', ['Very unlikely', 'Unlikely', 'Unsure', 'Likely', 'Very likely']),
+    question('overall_reaction', 'If you could change or improve one thing about SCFit, what would it be?', 'textarea', [], { required: false }),
   ] },
 ];
 
 function question(id, title, type, options, extra = {}) {
-  return { id, title, type, options, required: extra.required !== false, hint: extra.hint, other: extra.other, condition: extra.condition, personal: extra.personal, placeholder: extra.placeholder };
+  return { id, title, type, options, required: extra.required !== false, hint: extra.hint, other: extra.other, personal: extra.personal, placeholder: extra.placeholder, maxSelections: extra.maxSelections };
 }
 
-// Number only the research questions (Q1-Q17); participant-info fields stay unnumbered.
+// Number only the research questions; participant-info fields stay unnumbered.
 let questionNumber = 0;
 sections.forEach((section) => {
   (section.questions || []).forEach((item) => {
@@ -100,7 +88,7 @@ function render() {
   app.innerHTML = `
     <header class="topbar topbar--survey"><a class="wordmark" href="#" aria-label="SCFit Concept Test"><span class="mark">✦</span> scfit</a><span class="topbar-note">USC fitness community concept test</span></header>
     <main class="survey-shell">
-      <div class="progress-meta"><span>Step ${state.step} of 5</span><span>${progress}%</span></div>
+      <div class="progress-meta"><span>Step ${state.step} of ${sections.length}</span><span>${progress}%</span></div>
       <div class="progress-track" role="progressbar" aria-label="Survey progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><span style="width:${progress}%"></span></div>
       <section class="form-panel" aria-labelledby="section-title">
         <div class="section-kicker">SCFIT CONCEPT TEST <span>·</span> ${String(state.step).padStart(2, '0')}</div>
@@ -110,8 +98,8 @@ function render() {
         <div class="form-actions">
           <button class="button button-quiet" id="back-button" type="button">← <span>Back</span></button>
           ${section.prototype
-            ? `<button class="button button-primary" id="ready-button" type="button" ${state.openedAt ? '' : 'disabled'}>I explored the prototype and I’m ready to continue <span>→</span></button>`
-            : state.step === 5
+            ? `<button class="button button-primary" id="ready-button" type="button" ${state.openedAt ? '' : 'disabled'}>I explored SCFit — continue <span>→</span></button>`
+            : state.step === sections.length
               ? `<button class="button button-primary" id="continue-button" type="button" ${submitting ? 'disabled' : ''}>${submitting ? 'Submitting…' : 'Submit response'} <span>→</span></button>`
               : `<button class="button button-primary" id="continue-button" type="button">Continue <span>→</span></button>`}
         </div>
@@ -166,10 +154,9 @@ function renderQuestion(item) {
       </label>`).join('')}</div>`;
   }
   const other = item.other ? `<div class="other-field" ${values.includes('Other') ? '' : 'hidden'}><label for="field-${item.other}">Tell us a little more <span>(optional)</span></label><input id="field-${item.other}" name="${item.other}" type="text" maxlength="1000" value="${esc(state.answers[item.other] || '')}" placeholder="Add a short note"></div>` : '';
-  const showEmail = ['Yes, I would like to participate', 'Maybe — send me more information'].includes(state.answers[item.condition]);
-  const visibility = item.condition && !showEmail ? 'hidden' : '';
+  const visibility = '';
   const numberPrefix = item.number ? `${item.number}. ` : '';
-  return `<fieldset class="question ${item.type === 'email' ? 'email-question' : ''}" data-question="${item.id}" data-type="${item.type}" data-required="${item.required}" ${visibility}>
+  return `<fieldset class="question" data-question="${item.id}" data-type="${item.type}" data-required="${item.required}" data-max-selections="${item.maxSelections || ''}" ${visibility}>
     <legend>${numberPrefix}${esc(item.title)} ${required}</legend>${description}${control}${other}<p class="field-error" id="error-${item.id}" role="alert" hidden></p>
   </fieldset>`;
 }
@@ -216,16 +203,12 @@ function bindStepEvents() {
       const id = fieldset.dataset.question;
       if (fieldset.dataset.type === 'checkbox') {
         const selected = [...fieldset.querySelectorAll('input:checked')].map((control) => control.value);
-        const exclusive = id === 'participation_barriers' ? 'Nothing currently prevents me'
-          : id === 'adoption_barriers' ? 'Nothing would prevent me'
-            : id === 'fitness_interests' ? 'I am not currently interested in a fitness activity'
-              : id === 'prototype_sections_explored' ? 'I did not explore the prototype' : null;
-        if (exclusive && selected.includes(exclusive) && selected.length > 1) {
-          const removeOthers = input.value === exclusive;
-          fieldset.querySelectorAll('input').forEach((control) => {
-            if (removeOthers && control.value !== exclusive) control.checked = false;
-            if (!removeOthers && control.value === exclusive) control.checked = false;
-          });
+        const limit = Number(fieldset.dataset.maxSelections);
+        const error = fieldset.querySelector('.field-error');
+        if (limit && selected.length > limit) {
+          input.checked = false;
+          error.textContent = `Select up to ${limit}.`;
+          error.hidden = false;
         }
         state.answers[id] = [...fieldset.querySelectorAll('input:checked')].map((control) => control.value);
       } else if (input.type === 'radio') {
@@ -234,14 +217,6 @@ function bindStepEvents() {
       fieldset.querySelectorAll('.option-card').forEach((card) => card.classList.toggle('selected', card.querySelector('input').checked));
       const other = fieldset.querySelector('.other-field');
       if (other) other.hidden = !state.answers[id]?.includes('Other');
-      if (id === 'future_test_interest') {
-        const emailQuestion = document.querySelector('.email-question');
-        emailQuestion.hidden = !['Yes, I would like to participate', 'Maybe — send me more information'].includes(input.value);
-        if (input.value === 'No') {
-          state.answers.email = '';
-          document.querySelector('#field-email').value = '';
-        }
-      }
       persist();
     });
   });
@@ -271,18 +246,20 @@ async function startSurvey() {
   }
 }
 
-async function openPrototype(event) {
-  event.preventDefault();
-  window.open(PROTOTYPE_URL, '_blank', 'noopener,noreferrer');
-  const status = document.querySelector('#prototype-status');
-  status.textContent = 'Recording your visit…';
-  try {
-    await api('/api/events/prototype-opened', { method: 'POST', body: JSON.stringify({ session_id: state.sessionId }) });
-    state.openedAt = Date.now();
-    persist();
-    render();
-  } catch (failure) {
-    status.textContent = `${failure.message} Select Explore SCFit Prototype to retry logging.`;
+// Native anchor click: navigation to the prototype happens natively via href/target=_blank.
+// This listener only records state — it must never block or intercept navigation.
+function openPrototype() {
+  state.openedAt = state.openedAt || Date.now();
+  persist();
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (state.sessionId) {
+    fetch(`${API_BASE}/api/events/prototype-opened`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: state.sessionId }),
+      keepalive: true,
+    }).catch(() => {});
   }
 }
 
@@ -294,7 +271,7 @@ async function confirmReturn() {
   try {
     await api('/api/events/prototype-returned', { method: 'POST', body: JSON.stringify({ session_id: state.sessionId }) });
     state.returnedAt = Date.now();
-    state.step = 4;
+    state.step = 3;
     persist();
     render();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -302,7 +279,7 @@ async function confirmReturn() {
     error.textContent = failure.message;
     error.hidden = false;
     button.disabled = false;
-    button.innerHTML = 'I explored the prototype and I’m ready to continue <span>→</span>';
+    button.innerHTML = 'I explored SCFit — continue <span>→</span>';
   }
 }
 
@@ -331,7 +308,7 @@ function validateCurrentStep() {
 
 async function continueStep() {
   if (!validateCurrentStep()) return;
-  if (state.step === 5) return submitResponse();
+  if (state.step === sections.length) return submitResponse();
   state.step += 1;
   persist();
   render();

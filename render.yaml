@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: scfit-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: scfit-db
+          property: connectionString
+      - key: ADMIN_API_KEY
+        sync: false
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.13.3
+
+databases:
+  - name: scfit-db
+    plan: free
+    databaseName: scfit
+    user: scfit

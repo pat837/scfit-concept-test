@@ -13,7 +13,7 @@ from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
-from sqlalchemy import select
+from sqlalchemy import inspect, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -21,12 +21,40 @@ load_dotenv()
 
 from .database import Base, SessionLocal, engine
 from .models import SurveyResponse, SurveySession, utc_now
-from .schemas import ACTIONS, FUTURE_INTEREST, USC_AFFILIATIONS, EventRequest, SessionRequest, SurveySubmission
+from .schemas import INITIAL_TESTING_INTEREST, USC_AFFILIATIONS, EventRequest, SessionRequest, SurveySubmission
+
+
+LEGACY_REQUIRED_COLUMNS = (
+    "fitness_frequency",
+    "opportunity_difficulty",
+    "partner_difficulty",
+    "discovery_methods",
+    "prototype_sections_explored",
+    "community_value",
+    "future_test_interest",
+    "preferred_future_experience",
+)
+
+
+def migrate_response_schema() -> None:
+    columns = {column["name"]: column for column in inspect(engine).get_columns("survey_responses")}
+    with engine.begin() as connection:
+        if "initial_product_testing_interest" not in columns:
+            connection.execute(text(
+                "ALTER TABLE survey_responses "
+                "ADD COLUMN initial_product_testing_interest VARCHAR(40)"
+            ))
+        for column in LEGACY_REQUIRED_COLUMNS:
+            if column in columns and not columns[column]["nullable"]:
+                connection.execute(text(
+                    f'ALTER TABLE survey_responses ALTER COLUMN "{column}" DROP NOT NULL'
+                ))
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
+    migrate_response_schema()
     yield
 
 
@@ -142,6 +170,12 @@ def _distribution(responses: list[SurveyResponse], field: str) -> dict[str, int]
     for response in responses:
         value = getattr(response, field)
         counts.update(value if isinstance(value, list) else [value] if value else [])
+    if field == "initial_product_testing_interest":
+        return {
+            "Yes": counts[INITIAL_TESTING_INTEREST[0]],
+            "Maybe": counts[INITIAL_TESTING_INTEREST[1]],
+            "Not right now": counts[INITIAL_TESTING_INTEREST[2]],
+        }
     return dict(counts.most_common())
 
 
@@ -149,11 +183,6 @@ def _distribution(responses: list[SurveyResponse], field: str) -> dict[str, int]
 def metrics(db: Session = Depends(get_db)):
     responses = _responses(db)
     total = len(responses)
-    yes = sum(row.future_test_interest == FUTURE_INTEREST[0] for row in responses)
-    maybe = sum(row.future_test_interest == FUTURE_INTEREST[1] for row in responses)
-    no = sum(row.future_test_interest == FUTURE_INTEREST[2] for row in responses)
-    community_actions = set(ACTIONS[1:5])
-    action_count = sum(row.likely_action in community_actions for row in responses)
     opened_count = sum(row.prototype_opened_at is not None for row in responses)
     return {
         "total_responses": total,
@@ -161,29 +190,19 @@ def metrics(db: Session = Depends(get_db)):
         "usc_graduate_count": sum(row.usc_affiliation == USC_AFFILIATIONS[1] for row in responses),
         "non_usc_count": sum(row.usc_affiliation == USC_AFFILIATIONS[3] for row in responses),
         "prototype_exploration_count": opened_count,
-        "future_pilot_yes_count": yes,
-        "future_pilot_maybe_count": maybe,
-        "future_pilot_no_count": no,
-        "future_pilot_yes_percentage": _percentage(yes, total),
-        "future_pilot_yes_or_maybe_percentage": _percentage(yes + maybe, total),
-        "community_action_count": action_count,
-        "community_action_percentage": _percentage(action_count, total),
         "average_completion_time_seconds": round(sum(row.completion_time_seconds for row in responses) / total, 1) if total else 0,
         "distributions": {
-            "fitness_frequency": _distribution(responses, "fitness_frequency"),
+            "initial_product_testing_interest": _distribution(responses, "initial_product_testing_interest"),
+            "usc_affiliation": _distribution(responses, "usc_affiliation"),
             "fitness_interests": _distribution(responses, "fitness_interests"),
             "participation_barriers": _distribution(responses, "participation_barriers"),
             "most_valuable_feature": _distribution(responses, "most_valuable_feature"),
             "likely_action": _distribution(responses, "likely_action"),
-            "next_month_likelihood": _distribution(responses, "next_month_likelihood"),
             "adoption_barriers": _distribution(responses, "adoption_barriers"),
-            "preferred_future_experience": _distribution(responses, "preferred_future_experience"),
+            "next_month_likelihood": _distribution(responses, "next_month_likelihood"),
+            "overall_reaction": _distribution(responses, "overall_reaction"),
         },
     }
-
-
-def _percentage(count: int, total: int) -> float:
-    return round(count * 100 / total, 1) if total else 0.0
 
 
 @app.get("/api/admin/export.xlsx", dependencies=[Depends(require_admin)])
@@ -195,20 +214,16 @@ def export_responses(db: Session = Depends(get_db)):
     fields = [
         ("Session ID", "session_id"), ("Participant Name", "participant_name"),
         ("Major / Program", "major_program"), ("College / School", "college_school"),
-        ("USC Affiliation", "usc_affiliation"), ("Started At", "created_at"), ("Submitted At", "submitted_at"),
+        ("Initial Product Testing Interest", "initial_product_testing_interest"),
+        ("USC Affiliation", "usc_affiliation"), ("Fitness Interests", "fitness_interests"),
+        ("Fitness Interests - Other", "fitness_interests_other"),
+        ("Fitness Challenges", "participation_barriers"), ("Fitness Challenges - Other", "participation_barriers_other"),
+        ("Feature That Stood Out", "most_valuable_feature"),
+        ("Likely First Action", "likely_action"), ("Adoption Hesitations", "adoption_barriers"),
+        ("Next-Month Likelihood", "next_month_likelihood"), ("Suggested Improvement", "overall_reaction"),
+        ("Started At", "created_at"), ("Submitted At", "submitted_at"),
         ("Prototype Opened At", "prototype_opened_at"), ("Prototype Returned At", "prototype_returned_at"),
         ("Completion Time (seconds)", "completion_time_seconds"),
-        ("Fitness Frequency", "fitness_frequency"), ("Fitness Interests", "fitness_interests"),
-        ("Fitness Interests - Other", "fitness_interests_other"), ("Opportunity Difficulty", "opportunity_difficulty"),
-        ("Partner Difficulty", "partner_difficulty"), ("Participation Barriers", "participation_barriers"),
-        ("Participation Barriers - Other", "participation_barriers_other"), ("Discovery Methods", "discovery_methods"),
-        ("Discovery Methods - Other", "discovery_methods_other"), ("Prototype Sections Explored", "prototype_sections_explored"),
-        ("Most Valuable Feature", "most_valuable_feature"), ("Likely Action", "likely_action"),
-        ("Community Value", "community_value"), ("Next-Month Likelihood", "next_month_likelihood"),
-        ("Adoption Barriers", "adoption_barriers"), ("Adoption Barriers - Other", "adoption_barriers_other"),
-        ("Overall Reaction", "overall_reaction"), ("Future Test Interest", "future_test_interest"),
-        ("Email", "email"), ("Preferred Future Experience", "preferred_future_experience"),
-        ("Preferred Future Experience - Other", "preferred_future_experience_other"),
     ]
     sheet.append([label for label, _ in fields])
     for response in responses:
@@ -225,22 +240,19 @@ def export_responses(db: Session = Depends(get_db)):
 
     summary = workbook.create_sheet("Summary")
     summary.append(["SCFit Concept Test Responses", "Value", "Response", "Count"])
-    summary_metrics = _metrics_for(responses)
     summary_rows = [
         ("Total participants", len(responses)),
-        ("Pilot YES percentage", f"{summary_metrics['future_pilot_yes_percentage']}%"),
-        ("YES + MAYBE percentage", f"{summary_metrics['future_pilot_yes_or_maybe_percentage']}%"),
-        ("Community action percentage", f"{summary_metrics['community_action_percentage']}%"),
         ("Prototype exploration count", sum(row.prototype_opened_at is not None for row in responses)),
-        ("Average completion time (seconds)", summary_metrics["average_completion_time_seconds"]),
+        ("Average completion time (seconds)", round(sum(row.completion_time_seconds for row in responses) / len(responses), 1) if responses else 0),
     ]
     for label, value in summary_rows:
         summary.append([label, value])
     for title, field in [
-        ("Fitness frequency", "fitness_frequency"), ("Fitness interests", "fitness_interests"),
-        ("Participation barriers", "participation_barriers"), ("Most valuable feature", "most_valuable_feature"),
-        ("Likely action", "likely_action"), ("Next-month usage likelihood", "next_month_likelihood"),
-        ("Adoption barriers", "adoption_barriers"), ("Preferred future experience", "preferred_future_experience"),
+        ("Initial product testing interest", "initial_product_testing_interest"),
+        ("USC affiliation", "usc_affiliation"), ("Fitness interests", "fitness_interests"),
+        ("Fitness challenges", "participation_barriers"), ("Feature that stood out", "most_valuable_feature"),
+        ("Likely first action", "likely_action"), ("Adoption hesitations", "adoption_barriers"),
+        ("Next-month usage likelihood", "next_month_likelihood"),
     ]:
         summary.append([title])
         for answer, count in _distribution(responses, field).items():
@@ -259,19 +271,6 @@ def export_responses(db: Session = Depends(get_db)):
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": 'attachment; filename="scfit-concept-test-responses.xlsx"'},
     )
-
-
-def _metrics_for(responses: list[SurveyResponse]) -> dict:
-    total = len(responses)
-    yes = sum(row.future_test_interest == FUTURE_INTEREST[0] for row in responses)
-    maybe = sum(row.future_test_interest == FUTURE_INTEREST[1] for row in responses)
-    action_count = sum(row.likely_action in set(ACTIONS[1:5]) for row in responses)
-    return {
-        "future_pilot_yes_percentage": _percentage(yes, total),
-        "future_pilot_yes_or_maybe_percentage": _percentage(yes + maybe, total),
-        "community_action_percentage": _percentage(action_count, total),
-        "average_completion_time_seconds": round(sum(row.completion_time_seconds for row in responses) / total, 1) if total else 0,
-    }
 
 
 def _excel_safe(value):
