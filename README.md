@@ -1,6 +1,6 @@
 # SCFit Concept Test
 
-An anonymous, five-step concept test for the SCFit fitness-community prototype. The frontend is a Vite app; FastAPI stores anonymous sessions and completed responses in PostgreSQL. Participant emails are optional and are never included in aggregate metrics.
+An anonymous concept test for the SCFit fitness-community prototype. The Vite frontend is hosted on Netlify; FastAPI runs on Render and stores sessions and completed responses in Neon PostgreSQL. Participant emails are optional and are never included in aggregate metrics.
 
 ## Local Development
 
@@ -100,15 +100,11 @@ Before pushing, confirm nothing sensitive is staged: `git status` should not sho
 `.env`, `.venv/`, `node_modules/`, `dist/`, `__pycache__/`, or any `.xlsx` export.
 These are already excluded by `.gitignore`.
 
-### B. Render PostgreSQL (fresh production database)
+### B. Neon PostgreSQL
 
-1. In the Render dashboard: **New → PostgreSQL**.
-2. Give it a name (e.g. `scfit-db`), choose a region, and create it. This database
-   starts empty — it will **not** contain any of the local test responses.
-3. Once created, open the database page and copy the **Internal Database URL**
-   (use the internal URL if the FastAPI service will also run on Render, in the same
-   region — it's faster and free of egress; use the External URL only if connecting
-   from outside Render).
+Use the existing Neon PostgreSQL project and its production connection string.
+Keep that connection string private; it is configured as `DATABASE_URL` on the
+Render service and is never included in the frontend.
 
 ### C. Render FastAPI Web Service
 
@@ -127,7 +123,7 @@ These are already excluded by `.gitignore`.
 6. **Environment Variables** (Render service → Environment):
    | Key | Value |
    | --- | --- |
-   | `DATABASE_URL` | the Render PostgreSQL Internal Database URL from step B |
+   | `DATABASE_URL` | the Neon PostgreSQL connection string from step B |
    | `ADMIN_API_KEY` | a long random secret, e.g. output of `openssl rand -hex 32` |
    | `FRONTEND_ORIGIN` | the Netlify questionnaire origin, e.g. `https://scfit-concept-test.netlify.app` (set after step D/E; a placeholder is fine for the first deploy) |
 7. Deploy. Render builds and starts the service; tables are created automatically
@@ -175,8 +171,8 @@ Run through the full flow against the live URLs:
 7. Answer Q8–Q17 (Prototype Feedback, Future Pilot Interest), including testing the
    conditional email field (Yes/Maybe shows it, No hides it).
 8. Submit — `POST /api/responses` succeeds and the success screen appears.
-9. Confirm the row exists in the Render PostgreSQL database (Render dashboard →
-   database → Connect, or `psql` with the External URL).
+9. Confirm the row exists in the Neon PostgreSQL database using the Neon console or
+   a private `psql` connection.
 10. `curl -H "X-Admin-Key: <ADMIN_API_KEY>" https://<render-url>/api/admin/metrics`
     reflects the new response.
 11. `curl -H "X-Admin-Key: <ADMIN_API_KEY>" -o export.xlsx https://<render-url>/api/admin/export.xlsx`
@@ -188,4 +184,11 @@ Run through the full flow against the live URLs:
 The app does not collect IP addresses or exact location. Do not share admin
 credentials or the response workbook publicly; the workbook includes optional
 participant emails.
+
+### Admin Dashboard
+
+Open the deployed Netlify site at `/admin`, enter the shared `ADMIN_API_KEY`, and
+review response metrics and the submitted-user list. Use **Download Excel** for the
+detailed workbook, then **Log Out** when finished. The key is held only in the
+current browser session and is never included in the frontend build or URL.
 

@@ -109,6 +109,36 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .success-shell > p { color: var(--text-secondary); font-size: 15px; line-height: 1.7; }
 .success-rule { width: 54px; height: 2px; margin: 30px auto 20px; background: var(--accent); }
 .success-shell > span { color: var(--text-secondary); font-size: 12px; }
+.admin-shell { min-height: 100vh; }
+.admin-header { height: 76px; padding: 0 max(5vw, calc((100vw - 1240px) / 2)); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgb(109 80 72 / 14%); background: rgb(255 255 255 / 95%); }
+.admin-content { width: min(1240px, 90vw); margin: 0 auto; padding: 52px 0 64px; }
+.admin-content > .section-kicker { margin-bottom: 10px; }
+.admin-content > h1 { margin: 0; font-size: 32px; line-height: 1.2; letter-spacing: -1px; }
+.admin-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 28px 0 44px; }
+.admin-metric { min-width: 0; padding: 20px; border: 1px solid var(--border); border-radius: 16px; background: #fff; box-shadow: 0 12px 30px rgb(84 48 39 / 6%); }
+.admin-metric span { display: block; min-height: 34px; color: var(--text-secondary); font-size: 13px; line-height: 1.4; }
+.admin-metric strong { display: block; margin-top: 9px; color: var(--brand); font-size: 29px; line-height: 1.1; }
+.admin-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
+.admin-section-heading h2 { margin: 0; font-size: 21px; line-height: 1.3; }
+.admin-actions { display: flex; align-items: center; gap: 10px; }
+.button-secondary { border: 1px solid #d9cfca; background: #fff; color: var(--text-primary); }
+.button-secondary:hover:not(:disabled) { border-color: var(--brand); background: var(--brand-light); }
+.admin-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; background: #fff; box-shadow: 0 16px 42px rgb(84 48 39 / 8%); }
+.admin-table { width: 100%; min-width: 1050px; border-collapse: collapse; text-align: left; }
+.admin-table th { padding: 14px 15px; background: #fff8ee; color: var(--brand-dark); font-size: 12px; font-weight: 800; white-space: nowrap; }
+.admin-table td { padding: 14px 15px; border-top: 1px solid var(--border); color: var(--text-primary); font-size: 13px; line-height: 1.45; vertical-align: top; }
+.admin-table tbody tr:hover { background: #fffdfa; }
+.admin-empty { padding: 26px 20px; border: 1px dashed #d9cfca; border-radius: 12px; color: var(--text-secondary); text-align: center; }
+.admin-login-shell { min-height: 100vh; display: grid; place-items: center; padding: 32px 20px; }
+.admin-login-panel { width: min(460px, 100%); padding: 38px; border: 1px solid var(--border); border-radius: 22px; background: #fff; box-shadow: var(--shadow); }
+.admin-login-mark { margin-bottom: 22px; }
+.admin-login-panel h1 { margin: 10px 0; font-size: 27px; line-height: 1.25; letter-spacing: -.5px; }
+.admin-login-panel > p { margin: 0 0 25px; color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
+.admin-login-panel label { display: block; margin-bottom: 8px; color: var(--text-primary); font-size: 13px; font-weight: 700; }
+.admin-login-panel input { display: block; width: 100%; min-height: 48px; padding: 11px 13px; border: 1px solid var(--border); border-radius: 10px; background: #fff; color: var(--text-primary); font-size: 15px; }
+.admin-login-panel .button { width: 100%; margin-top: 14px; }
+.admin-login-panel .notice { margin-bottom: 0; }
+.admin-shell button:focus-visible, .admin-login-shell button:focus-visible, .admin-login-shell input:focus-visible { outline-color: var(--accent); }
 @keyframes rise-in { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
 
 @media (max-width: 760px) {
@@ -135,6 +165,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   .form-actions .button-primary { max-width: 78%; }
   .success-shell { padding-top: 22vh; }
   .success-shell h1 { font-size: 28px; }
+  .admin-header { height: 64px; padding: 0 5vw; }
+  .admin-content { width: 90vw; padding: 34px 0 46px; }
+  .admin-content > h1 { font-size: 27px; }
+  .admin-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 21px 0 34px; }
+  .admin-metric { padding: 15px; }
+  .admin-metric span { min-height: 36px; font-size: 12px; }
+  .admin-metric strong { font-size: 25px; }
+  .admin-section-heading { align-items: flex-start; flex-direction: column; }
+  .admin-actions { width: 100%; }
+  .admin-actions .button { flex: 1; min-width: 0; padding-inline: 10px; font-size: 12px; }
+  .admin-login-panel { padding: 29px 23px; }
 }
 
 @media (max-width: 390px) {

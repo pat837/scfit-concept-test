@@ -205,6 +205,29 @@ def metrics(db: Session = Depends(get_db)):
     }
 
 
+@app.get("/api/admin/responses", dependencies=[Depends(require_admin)])
+def admin_responses(db: Session = Depends(get_db)):
+    responses = list(db.scalars(
+        select(SurveyResponse).order_by(SurveyResponse.submitted_at.desc())
+    ))
+    return {
+        "total": len(responses),
+        "responses": [
+            {
+                "id": response.id,
+                "participant_name": response.participant_name,
+                "major_program": response.major_program,
+                "college_school": response.college_school,
+                "initial_product_testing_interest": response.initial_product_testing_interest,
+                "usc_affiliation": response.usc_affiliation,
+                "submitted_at": _aware(response.submitted_at).isoformat(),
+                "completion_time_seconds": response.completion_time_seconds,
+            }
+            for response in responses
+        ],
+    }
+
+
 @app.get("/api/admin/export.xlsx", dependencies=[Depends(require_admin)])
 def export_responses(db: Session = Depends(get_db)):
     responses = _responses(db)

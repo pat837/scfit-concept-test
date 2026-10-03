@@ -2,6 +2,7 @@ import './style.css';
 
 const PROTOTYPE_URL = 'https://scfit-fitness.netlify.app/';
 const STORAGE_KEY = 'scfit-concept-test-v2';
+const ADMIN_SESSION_KEY = 'scfit-admin-session-key';
 // Strip a trailing slash so `${API_BASE}${path}` never produces a double slash.
 const API_BASE = (import.meta.env.DEV
   ? (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000')
@@ -43,6 +44,11 @@ sections.forEach((section) => {
 const initialState = () => ({ step: 0, sessionId: null, startedAt: null, openedAt: null, returnedAt: null, answers: {} });
 let state = loadState();
 let submitting = false;
+let adminMetrics = null;
+let adminResponses = [];
+let adminLoading = false;
+let adminRequestStarted = false;
+let adminError = '';
 const app = document.querySelector('#app');
 
 function loadState() {
@@ -80,6 +86,9 @@ function esc(value) {
 }
 
 function render() {
+  if (window.location.pathname === '/admin' || window.location.pathname === '/admin/') {
+    return renderAdmin();
+  }
   if (state.complete) return renderSuccess();
   if (state.step === 0) return renderLanding();
   const stepIndex = state.step - 1;
@@ -107,6 +116,217 @@ function render() {
       <footer class="survey-footer"><span>✦ SCFit</span><span>A student-created concept prototype, not an official USC platform.</span></footer>
     </main>`;
   bindStepEvents();
+}
+
+function renderAdmin() {
+  const key = sessionStorage.getItem(ADMIN_SESSION_KEY);
+  if (!key) return renderAdminLogin();
+  app.innerHTML = `
+    <main class="admin-shell">
+      <header class="admin-header">
+        <a class="wordmark" href="/" aria-label="SCFit Concept Test"><span class="mark">✦</span> scfit</a>
+        <button class="button button-quiet" id="admin-logout" type="button">Log Out</button>
+      </header>
+      <section class="admin-content" aria-labelledby="admin-title">
+        <div class="section-kicker">SCFIT ADMIN</div>
+        <h1 id="admin-title">Response Dashboard</h1>
+        <div class="admin-metrics" aria-label="Response metrics">
+          <article class="admin-metric"><span>Total Responses</span><strong>${adminMetrics?.total_responses ?? '—'}</strong></article>
+          <article class="admin-metric"><span>USC Undergraduate</span><strong>${adminMetrics?.usc_undergraduate_count ?? '—'}</strong></article>
+          <article class="admin-metric"><span>USC Graduate</span><strong>${adminMetrics?.usc_graduate_count ?? '—'}</strong></article>
+          <article class="admin-metric"><span>Average Completion Time</span><strong>${formatDuration(adminMetrics?.average_completion_time_seconds)}</strong></article>
+        </div>
+        <section class="admin-responses" aria-labelledby="responses-title">
+          <div class="admin-section-heading">
+            <h2 id="responses-title">Recent / Submitted Responses</h2>
+            <div class="admin-actions">
+              <button class="button button-secondary" id="admin-refresh" type="button" ${adminLoading ? 'disabled' : ''}>${adminLoading ? 'Refreshing…' : 'Refresh Responses'}</button>
+              <button class="button button-primary" id="admin-download" type="button" ${adminLoading ? 'disabled' : ''}>Download Excel</button>
+            </div>
+          </div>
+          ${adminError ? `<p class="notice error-notice" role="alert">${esc(adminError)}</p>` : ''}
+          ${adminLoading && !adminMetrics ? '<p class="admin-empty" role="status">Loading responses…</p>' : renderAdminResponses()}
+        </section>
+      </section>
+    </main>`;
+  document.querySelector('#admin-logout').addEventListener('click', logoutAdmin);
+  document.querySelector('#admin-refresh').addEventListener('click', refreshAdminDashboard);
+  document.querySelector('#admin-download').addEventListener('click', downloadAdminExport);
+  if (!adminLoading && !adminRequestStarted) {
+    adminRequestStarted = true;
+    refreshAdminDashboard();
+  }
+}
+
+function renderAdminLogin(message = '') {
+  app.innerHTML = `
+    <main class="admin-login-shell">
+      <section class="admin-login-panel" aria-labelledby="admin-login-title">
+        <div class="mark admin-login-mark" aria-hidden="true">✦</div>
+        <div class="section-kicker">SCFIT ADMIN</div>
+        <h1 id="admin-login-title">Team Response Dashboard</h1>
+        <p>Enter the SCFit team admin key to view submitted responses.</p>
+        <form id="admin-login-form">
+          <label for="admin-key">Admin access key</label>
+          <input id="admin-key" name="admin-key" type="password" autocomplete="current-password" required>
+          <div class="notice error-notice" id="admin-login-error" role="alert" ${message ? '' : 'hidden'}>${esc(message)}</div>
+          <button class="button button-primary" id="admin-login-button" type="submit">Access Dashboard</button>
+        </form>
+      </section>
+    </main>`;
+  document.querySelector('#admin-login-form').addEventListener('submit', loginAdmin);
+}
+
+function renderAdminResponses() {
+  if (!adminResponses.length) return '<p class="admin-empty">No responses have been submitted yet.</p>';
+  return `<div class="admin-table-wrap"><table class="admin-table">
+    <thead><tr><th scope="col">Participant</th><th scope="col">Major / Program</th><th scope="col">College / School</th><th scope="col">USC Affiliation</th><th scope="col">Testing Interest</th><th scope="col">Submitted</th><th scope="col">Completion Time</th></tr></thead>
+    <tbody>${adminResponses.map((response) => `<tr>
+      <td>${esc(response.participant_name || '—')}</td>
+      <td>${esc(response.major_program || '—')}</td>
+      <td>${esc(response.college_school || '—')}</td>
+      <td>${esc(response.usc_affiliation || '—')}</td>
+      <td>${esc(response.initial_product_testing_interest || '—')}</td>
+      <td>${esc(formatSubmittedAt(response.submitted_at))}</td>
+      <td>${esc(formatDuration(response.completion_time_seconds))}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+async function adminApi(path, key, options = {}) {
+  let response;
+  try {
+    const headers = { ...options.headers, 'X-Admin-Key': key };
+    if (options.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
+    response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch {
+    throw new Error('Could not reach the admin service. Check your connection and try again.');
+  }
+  if (response.status === 401) {
+    const error = new Error('Invalid admin key.');
+    error.status = 401;
+    throw error;
+  }
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.detail || 'The admin request failed. Please try again.');
+  }
+  return response;
+}
+
+async function loginAdmin(event) {
+  event.preventDefault();
+  const form = document.querySelector('#admin-login-form');
+  const input = document.querySelector('#admin-key');
+  const button = document.querySelector('#admin-login-button');
+  const errorBox = document.querySelector('#admin-login-error');
+  const key = input.value;
+  button.disabled = true;
+  button.textContent = 'Checking…';
+  errorBox.hidden = true;
+  try {
+    const response = await adminApi('/api/admin/metrics', key);
+    await response.json();
+    sessionStorage.setItem(ADMIN_SESSION_KEY, key);
+    adminMetrics = null;
+    adminRequestStarted = false;
+    adminError = '';
+    renderAdmin();
+  } catch (error) {
+    errorBox.textContent = error.status === 401 ? 'Invalid admin key.' : error.message;
+    errorBox.hidden = false;
+    button.disabled = false;
+    button.textContent = 'Access Dashboard';
+    input.value = '';
+    input.focus();
+  }
+}
+
+async function refreshAdminDashboard() {
+  const key = sessionStorage.getItem(ADMIN_SESSION_KEY);
+  if (!key) return renderAdminLogin();
+  adminRequestStarted = true;
+  adminLoading = true;
+  adminError = '';
+  renderAdmin();
+  try {
+    const [metricsResponse, responsesResponse] = await Promise.all([
+      adminApi('/api/admin/metrics', key),
+      adminApi('/api/admin/responses', key),
+    ]);
+    const [metricsData, responsesData] = await Promise.all([metricsResponse.json(), responsesResponse.json()]);
+    adminMetrics = metricsData;
+    adminResponses = Array.isArray(responsesData.responses) ? responsesData.responses : [];
+  } catch (error) {
+    if (error.status === 401) {
+      sessionStorage.removeItem(ADMIN_SESSION_KEY);
+      adminMetrics = null;
+      adminResponses = [];
+      adminLoading = false;
+      adminRequestStarted = false;
+      return renderAdminLogin('Your admin session expired. Enter the key again.');
+    }
+    adminError = error.message;
+  } finally {
+    adminLoading = false;
+    if (sessionStorage.getItem(ADMIN_SESSION_KEY)) renderAdmin();
+  }
+}
+
+async function downloadAdminExport() {
+  const key = sessionStorage.getItem(ADMIN_SESSION_KEY);
+  if (!key) return renderAdminLogin();
+  const button = document.querySelector('#admin-download');
+  button.disabled = true;
+  button.textContent = 'Preparing Excel…';
+  adminError = '';
+  try {
+    const response = await adminApi('/api/admin/export.xlsx', key);
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'scfit-concept-test-responses.xlsx';
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    if (error.status === 401) {
+      sessionStorage.removeItem(ADMIN_SESSION_KEY);
+      adminMetrics = null;
+      adminResponses = [];
+      adminRequestStarted = false;
+      return renderAdminLogin('Your admin session expired. Enter the key again.');
+    }
+    adminError = error.message;
+  } finally {
+    if (sessionStorage.getItem(ADMIN_SESSION_KEY)) renderAdmin();
+  }
+}
+
+function logoutAdmin() {
+  sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  adminMetrics = null;
+  adminResponses = [];
+  adminRequestStarted = false;
+  adminError = '';
+  renderAdminLogin();
+}
+
+function formatDuration(value) {
+  const seconds = Number(value);
+  if (!Number.isFinite(seconds) || seconds < 0) return '—';
+  const rounded = Math.round(seconds);
+  const minutes = Math.floor(rounded / 60);
+  const remainder = rounded % 60;
+  return minutes ? `${minutes}m ${remainder}s` : `${remainder}s`;
+}
+
+function formatSubmittedAt(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
 }
 
 function renderLanding() {
